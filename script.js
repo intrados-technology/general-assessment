@@ -370,16 +370,8 @@ function calculateScores() {
     totalScore >= 100 ? 'Hire'        :
     totalScore >= 80  ? 'Borderline'  : 'Reject';
 
-  var year = new Date().getFullYear();
-  // Serial number: persistent per-year counter stored in localStorage
-  var serialKey = 'ids_serial_' + year;
-  var serial = parseInt(localStorage.getItem(serialKey) || '0', 10) + 1;
-  localStorage.setItem(serialKey, serial);
-  var seq = String(serial).padStart(3, '0');
-  // Format: IDS/HIRE/2026/001  ('HIRE' is a fixed label)
-  var referenceId = 'IDS/HIRE/' + year + '/' + seq;
-  return { empScore, emotScore, attachScore, totalScore, recommendation,
-           referenceId: referenceId };
+  // referenceId is generated in finaliseSubmission() after confirmed submit
+  return { empScore, emotScore, attachScore, totalScore, recommendation };
 }
 
 // ── Final Submission ─────────────────────────────────────────────
@@ -389,6 +381,15 @@ function finaliseSubmission() {
   if (state.timerRef) clearInterval(state.timerRef);
 
   var scores  = calculateScores();
+
+  // Generate Reference ID — runs ONCE per submission only
+  var year      = new Date().getFullYear();
+  var serialKey = 'ids_job_serial_' + year;
+  var serial    = parseInt(localStorage.getItem(serialKey) || '0', 10) + 1;
+  localStorage.setItem(serialKey, String(serial));
+  var seq       = String(serial).padStart(3, '0');
+  scores.referenceId = 'IDS/JOB/' + year + '/' + seq;
+
   var subTime = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 
   var hrRecord = {
