@@ -6,7 +6,9 @@
 'use strict';
 
 // ── Google Sheets integration endpoint (replace with your URL) ──
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwpOhWJH7KTNWtz2Rea2UgliuM6B8MDPdKzSl0YShxOcMP36AnZED8NeV62wCs9YhWJdw/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxwwskAPDFEYWuNENc9DplBoF-b30Q2c7xqUVfyhnPvJEKosYbasi8PwdhgvL5kxPjXnw/exec";
+const ASSESSMENT_TYPE =
+  document.querySelector('meta[name="assessment-type"]')?.content || 'General';
 
 // ── Multi-Tab Protection ────────────────────────────────────────
 // Each tab gets a unique ID. When an assessment starts, that ID is
@@ -369,9 +371,15 @@ function calculateScores() {
     totalScore >= 80  ? 'Borderline'  : 'Reject';
 
   var year = new Date().getFullYear();
-  var seq  = String(Date.now() % 9999 + 1).padStart(4, '0');
+  // Serial number: persistent per-year counter stored in localStorage
+  var serialKey = 'ids_serial_' + year;
+  var serial = parseInt(localStorage.getItem(serialKey) || '0', 10) + 1;
+  localStorage.setItem(serialKey, serial);
+  var seq = String(serial).padStart(3, '0');
+  // Format: IDS/HIRE/2026/001  ('HIRE' is a fixed label)
+  var referenceId = 'IDS/HIRE/' + year + '/' + seq;
   return { empScore, emotScore, attachScore, totalScore, recommendation,
-           referenceId: 'IDS-' + year + '-' + seq };
+           referenceId: referenceId };
 }
 
 // ── Final Submission ─────────────────────────────────────────────
@@ -419,11 +427,18 @@ async function submitToGoogleSheet(record) {
       method: 'POST', mode: 'no-cors',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        referenceId: record.referenceId, name: record.name,
-        mobile: record.mobile, email: record.email, position: record.position,
-        empScore: record.empScore, emotScore: record.emotScore,
-        attachScore: record.attachScore, totalScore: record.totalScore,
-        recommendation: record.recommendation, submissionTime: record.submissionTime
+        sheetName:      'General Assessment',
+        referenceId:    record.referenceId,
+        name:           record.name,
+        mobile:         record.mobile,
+        email:          record.email,
+        position:       record.position,
+        empScore:       record.empScore,
+        emotScore:      record.emotScore,
+        attachScore:    record.attachScore,
+        totalScore:     record.totalScore,
+        recommendation: record.recommendation,
+        submissionTime: record.submissionTime
       })
     });
   } catch(err) { console.warn('[IDS] Sheets error:', err); }
