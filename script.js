@@ -6,7 +6,7 @@
 'use strict';
 
 // ── Google Sheets integration endpoint (replace with your URL) ──
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxwwskAPDFEYWuNENc9DplBoF-b30Q2c7xqUVfyhnPvJEKosYbasi8PwdhgvL5kxPjXnw/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwnOUVWKGiCV9HZOrP1sSPK22182MyTI3pNHqoNGcQWmztdu4BRlj6C8BjyPsWy5oGYsg/exec";
 const ASSESSMENT_TYPE =
   document.querySelector('meta[name="assessment-type"]')?.content || 'General';
 
@@ -171,6 +171,19 @@ function checkFormValidity() {
              validators.email(DOM.formEmail.value).valid &&
              validators.position(DOM.formPosition.value).valid;
   DOM.btnStart.disabled = !ok;
+
+  // Update button icon and label to reflect state clearly
+  var icon = document.getElementById('btn-start-icon');
+  var text = document.getElementById('btn-start-text');
+  if (icon && text) {
+    if (ok) {
+      icon.textContent = '✓';
+      text.textContent = 'Begin Assessment';
+    } else {
+      icon.textContent = '🔒';
+      text.textContent = 'Fill all fields to continue';
+    }
+  }
 }
 
 DOM.formName.addEventListener('input', () => { validateField(DOM.formName, DOM.errName, validators.name); checkFormValidity(); });
@@ -374,26 +387,81 @@ function calculateScores() {
   return { empScore, emotScore, attachScore, totalScore, recommendation };
 }
 
+// ── Google Sheet ID — used to read last RefID via public JSON feed ─
+const SHEET_ID  = '1Ep0ESBJb-QxzBfN2oxIAH0RFJOPvCsNb4NpvmyWOfDA';
+const SHEET_TAB = 'General%20Assessment';
+
 // ── Final Submission ─────────────────────────────────────────────
-function finaliseSubmission() {
+// Flow:
+//   1. Read last RefID from Google Sheet public JSON feed (no CORS)
+//   2. Increment → generate new RefID locally
+//   3. POST all data + new RefID to Apps Script (no-cors, always saves)
+//   4. Display RefID to candidate immediately
+//
+// Sheet must be shared as "Anyone with the link can VIEW"
+// ─────────────────────────────────────────────────────────────────
+async function finaliseSubmission() {
   if (state.submitted) return;
   state.submitted = true;
   if (state.timerRef) clearInterval(state.timerRef);
 
+  DOM.assSection.style.display   = 'none';
+  DOM.timerDisplay.style.display = 'none';
+  DOM.confSection.style.display  = 'block';
+  DOM.refId.textContent          = 'Generating...';
+
   var scores  = calculateScores();
-
-  // Generate Reference ID — runs ONCE per submission only
-  var year      = new Date().getFullYear();
-  var serialKey = 'ids_job_serial_' + year;
-  var serial    = parseInt(localStorage.getItem(serialKey) || '0', 10) + 1;
-  localStorage.setItem(serialKey, String(serial));
-  var seq       = String(serial).padStart(3, '0');
-  scores.referenceId = 'IDS/JOB/' + year + '/' + seq;
-
+  var year    = new Date().getFullYear();
   var subTime = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 
+  // ── Step 1: Read last RefID from sheet via gviz/tq JSON feed ──
+  // This endpoint is publicly readable with ZERO CORS restrictions.
+  // Queries column B (Reference ID), orders by col A (Timestamp) DESC,
+  // returns only the most recent row — giving us the last RefID.
+  var referenceId = 'IDS/JOB/' + year + '/001';
+
+  try {
+    // Query: get ALL of column B (RefID column), last 1 row by row order
+    // No WHERE filter — STARTS WITH is not supported by gviz query language
+    var query = encodeURIComponent('SELECT B LIMIT 1000');
+    var feedUrl = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+      '/gviz/tq?tqx=out:json&sheet=' + SHEET_TAB + '&tq=' + query;
+
+    var resp = await fetch(feedUrl);
+    var text = await resp.text();
+
+    // Strip Google's JS wrapper: /*O_o*/google.visualization.Query.setResponse({...});
+    var start   = text.indexOf('{');
+    var end     = text.lastIndexOf('}');
+    var jsonStr = text.substring(start, end + 1);
+    var json    = JSON.parse(jsonStr);
+    var rows    = json && json.table && json.table.rows;
+
+    if (rows && rows.length > 0) {
+      // Scan from the BOTTOM to find the last valid IDS/JOB/YYYY/NNN entry
+      for (var i = rows.length - 1; i >= 0; i--) {
+        if (!rows[i].c || !rows[i].c[0] || !rows[i].c[0].v) continue;
+        var cellVal = String(rows[i].c[0].v).trim();
+        var match   = cellVal.match(/^IDS\/JOB\/\d{4}\/(\d+)$/);
+        if (match) {
+          var nextSerial = parseInt(match[1], 10) + 1;
+          referenceId    = 'IDS/JOB/' + year + '/' + String(nextSerial).padStart(3, '0');
+          console.info('[IDS] Last RefID:', cellVal, '→ next:', referenceId);
+          break;
+        }
+      }
+    } else {
+      console.info('[IDS] Sheet empty — starting at 001');
+    }
+
+  } catch(err) {
+    console.warn('[IDS] Could not read sheet:', err.message);
+    referenceId = 'IDS/JOB/' + year + '/' + String(Date.now() % 100000).padStart(5, '0');
+  }
+
+  // ── Step 2: POST to Apps Script with no-cors (always works) ───
   var hrRecord = {
-    referenceId:    scores.referenceId,
+    referenceId:    referenceId,
     name:           state.candidate.name,
     mobile:         state.candidate.mobile,
     email:          state.candidate.email,
@@ -407,42 +475,35 @@ function finaliseSubmission() {
     answers:        state.answers
   };
 
+  // Fire and forget — no-cors always saves, response unreadable but not needed
+  fetch(SCRIPT_URL, {
+    method:  'POST',
+    mode:    'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sheetName:      'General Assessment',
+      referenceId:    hrRecord.referenceId,
+      name:           hrRecord.name,
+      mobile:         hrRecord.mobile,
+      email:          hrRecord.email,
+      position:       hrRecord.position,
+      empScore:       hrRecord.empScore,
+      emotScore:      hrRecord.emotScore,
+      attachScore:    hrRecord.attachScore,
+      totalScore:     hrRecord.totalScore,
+      recommendation: hrRecord.recommendation,
+      submissionTime: hrRecord.submissionTime
+    })
+  }).catch(function(err) { console.warn('[IDS] POST error:', err.message); });
+
   try { sessionStorage.setItem('ids_hr_record', JSON.stringify(hrRecord)); } catch(e) {}
-  submitToGoogleSheet(hrRecord);
-  // Clear all localStorage session flags on completion
+
   localStorage.removeItem('assessmentRunning');
   localStorage.removeItem('assessmentTab');
   localStorage.removeItem('ids_answers');
 
-  DOM.assSection.style.display   = 'none';
-  DOM.timerDisplay.style.display = 'none';
-  DOM.confSection.style.display  = 'block';
-  DOM.refId.textContent = scores.referenceId;
-}
-
-// ── Google Sheets ─────────────────────────────────────────────────
-async function submitToGoogleSheet(record) {
-  if (!SCRIPT_URL || SCRIPT_URL === 'PASTE_GOOGLE_APPS_SCRIPT_URL_HERE') return;
-  try {
-    await fetch(SCRIPT_URL, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sheetName:      'General Assessment',
-        referenceId:    record.referenceId,
-        name:           record.name,
-        mobile:         record.mobile,
-        email:          record.email,
-        position:       record.position,
-        empScore:       record.empScore,
-        emotScore:      record.emotScore,
-        attachScore:    record.attachScore,
-        totalScore:     record.totalScore,
-        recommendation: record.recommendation,
-        submissionTime: record.submissionTime
-      })
-    });
-  } catch(err) { console.warn('[IDS] Sheets error:', err); }
+  // ── Step 3: Show RefID immediately ────────────────────────────
+  DOM.refId.textContent = referenceId;
 }
 
 // ── PDF Report (HR only) ──────────────────────────────────────────
