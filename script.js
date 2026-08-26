@@ -6,7 +6,7 @@
 'use strict';
 
 // ── Google Sheets integration endpoint (replace with your URL) ──
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwnOUVWKGiCV9HZOrP1sSPK22182MyTI3pNHqoNGcQWmztdu4BRlj6C8BjyPsWy5oGYsg/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxteJu1b_okEFYv4jbSF4Ne55bOfBsyIiIx3tnAVHq833I1f7c7aGcn7VVck--VI_a8tg/exec";
 const ASSESSMENT_TYPE =
   document.querySelector('meta[name="assessment-type"]')?.content || 'General';
 
@@ -94,11 +94,13 @@ const DOM = {
   formEmail:      document.getElementById('field-email'),
   formPosition:   document.getElementById('field-position'),
   formTrack:      document.getElementById('field-track'),
+  formDomain:     document.getElementById('field-domain'),
   errName:        document.getElementById('err-name'),
   errMobile:      document.getElementById('err-mobile'),
   errEmail:       document.getElementById('err-email'),
   errPosition:    document.getElementById('err-position'),
   errTrack:       document.getElementById('err-track'),
+  errDomain:      document.getElementById('err-domain'),
   btnStart:       document.getElementById('btn-start'),
 
   progressFill:   document.getElementById('progress-fill'),
@@ -165,7 +167,8 @@ const validators = {
   mobile:   v => /^\d{10}$/.test(v.trim()) ? { valid: true } : { valid: false, msg: 'Please enter a valid 10-digit mobile number.' },
   email:    v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) ? { valid: true } : { valid: false, msg: 'Please provide a valid email address.' },
   position: v => v.trim().length > 0 ? { valid: true } : { valid: false, msg: 'Position applied for cannot be blank.' },
-  track:    v => (v === 'Fresher' || v === 'Experienced') ? { valid: true } : { valid: false, msg: 'Please select whether you are applying as a Fresher or Experienced candidate.' }
+  track:    v => (v === 'Fresher' || v === 'Experienced') ? { valid: true } : { valid: false, msg: 'Please select whether you are applying as a Fresher or Experienced candidate.' },
+  domain:   v => (v === 'Technical' || v === 'Non-Technical') ? { valid: true } : { valid: false, msg: 'Please select Technical or Non-Technical.' }
 };
 
 function checkFormValidity() {
@@ -173,7 +176,8 @@ function checkFormValidity() {
              validators.mobile(DOM.formMobile.value).valid &&
              validators.email(DOM.formEmail.value).valid &&
              validators.position(DOM.formPosition.value).valid &&
-             validators.track(DOM.formTrack.value).valid;
+             validators.track(DOM.formTrack.value).valid &&
+             validators.domain(DOM.formDomain.value).valid;
   DOM.btnStart.disabled = !ok;
 
   // Update button icon and label to reflect state clearly
@@ -199,6 +203,7 @@ DOM.formMobile.addEventListener('input', () => {
 DOM.formEmail.addEventListener('input',    () => { validateField(DOM.formEmail, DOM.errEmail, validators.email); checkFormValidity(); });
 DOM.formPosition.addEventListener('input', () => { validateField(DOM.formPosition, DOM.errPosition, validators.position); checkFormValidity(); });
 DOM.formTrack.addEventListener('change',   () => { validateField(DOM.formTrack, DOM.errTrack, validators.track); checkFormValidity(); });
+DOM.formDomain.addEventListener('change',  () => { validateField(DOM.formDomain, DOM.errDomain, validators.domain); checkFormValidity(); });
 
 // ── Start Assessment ─────────────────────────────────────────────
 DOM.btnStart.addEventListener('click', function() {
@@ -207,7 +212,8 @@ DOM.btnStart.addEventListener('click', function() {
     mobile:   DOM.formMobile.value.trim(),
     email:    DOM.formEmail.value.trim(),
     position: DOM.formPosition.value.trim(),
-    track:    DOM.formTrack.value.trim()
+    track:    DOM.formTrack.value.trim(),
+    domain:   DOM.formDomain.value.trim()
   };
   DOM.regSection.style.display   = 'none';
   DOM.assSection.style.display   = 'block';
@@ -473,6 +479,7 @@ async function finaliseSubmission() {
     email:          state.candidate.email,
     position:       state.candidate.position,
     track:          state.candidate.track,
+    domain:         state.candidate.domain,
     empScore:       scores.empScore,
     emotScore:      scores.emotScore,
     attachScore:    scores.attachScore,
@@ -495,6 +502,7 @@ async function finaliseSubmission() {
       email:          hrRecord.email,
       position:       hrRecord.position,
       track:          hrRecord.track,
+      domain:         hrRecord.domain,
       empScore:       hrRecord.empScore,
       emotScore:      hrRecord.emotScore,
       attachScore:    hrRecord.attachScore,

@@ -167,6 +167,24 @@
             <span class="field-error" id="err-track" role="alert" aria-live="polite"></span>
           </div>
 
+          <!-- Domain -->
+          <div class="form-group">
+            <label class="form-label" for="field-domain">
+              Domain <span class="req" aria-hidden="true">*</span>
+            </label>
+            <select
+              id="field-domain"
+              class="form-input"
+              aria-required="true"
+              aria-describedby="err-domain"
+            >
+              <option value="" disabled selected>Select one</option>
+              <option value="Technical">Technical</option>
+              <option value="Non-Technical">Non-Technical</option>
+            </select>
+            <span class="field-error" id="err-domain" role="alert" aria-live="polite"></span>
+          </div>
+
           <!-- Start Button -->
           <button
             id="btn-start"
