@@ -149,6 +149,24 @@
             <span class="field-error" id="err-position" role="alert" aria-live="polite"></span>
           </div>
 
+          <!-- Applying As (Track) -->
+          <div class="form-group">
+            <label class="form-label" for="field-track">
+              Applying As <span class="req" aria-hidden="true">*</span>
+            </label>
+            <select
+              id="field-track"
+              class="form-input"
+              aria-required="true"
+              aria-describedby="err-track"
+            >
+              <option value="" disabled selected>Select one</option>
+              <option value="Fresher">Fresher</option>
+              <option value="Experienced">Experienced</option>
+            </select>
+            <span class="field-error" id="err-track" role="alert" aria-live="polite"></span>
+          </div>
+
           <!-- Start Button -->
           <button
             id="btn-start"

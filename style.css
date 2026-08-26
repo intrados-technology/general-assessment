@@ -89,7 +89,7 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; letter-spacing: -0.02em; }
 }
 
 .logo-image {
-  height: 90px;
+  height: 56px;
   width: auto;
   display: block;
   /* Image was authored on black; this keeps it crisp on the white header */
@@ -294,10 +294,13 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; letter-spacing: -0.02em; }
 .btn-start:active:not(:disabled) { transform: translateY(0); }
 
 .btn-start:disabled {
-  opacity: 0.45;
+  opacity: 1;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+  background: #D1D5DB;
+  color: #9CA3AF;
+  pointer-events: none;
 }
 
 /* ── Assessment Page ───────────────────────────────────────── */

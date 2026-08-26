@@ -93,10 +93,12 @@ const DOM = {
   formMobile:     document.getElementById('field-mobile'),
   formEmail:      document.getElementById('field-email'),
   formPosition:   document.getElementById('field-position'),
+  formTrack:      document.getElementById('field-track'),
   errName:        document.getElementById('err-name'),
   errMobile:      document.getElementById('err-mobile'),
   errEmail:       document.getElementById('err-email'),
   errPosition:    document.getElementById('err-position'),
+  errTrack:       document.getElementById('err-track'),
   btnStart:       document.getElementById('btn-start'),
 
   progressFill:   document.getElementById('progress-fill'),
@@ -162,14 +164,16 @@ const validators = {
   name:     v => v.trim().length > 0 ? { valid: true } : { valid: false, msg: 'Full name cannot be blank.' },
   mobile:   v => /^\d{10}$/.test(v.trim()) ? { valid: true } : { valid: false, msg: 'Please enter a valid 10-digit mobile number.' },
   email:    v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) ? { valid: true } : { valid: false, msg: 'Please provide a valid email address.' },
-  position: v => v.trim().length > 0 ? { valid: true } : { valid: false, msg: 'Position applied for cannot be blank.' }
+  position: v => v.trim().length > 0 ? { valid: true } : { valid: false, msg: 'Position applied for cannot be blank.' },
+  track:    v => (v === 'Fresher' || v === 'Experienced') ? { valid: true } : { valid: false, msg: 'Please select whether you are applying as a Fresher or Experienced candidate.' }
 };
 
 function checkFormValidity() {
   const ok = validators.name(DOM.formName.value).valid &&
              validators.mobile(DOM.formMobile.value).valid &&
              validators.email(DOM.formEmail.value).valid &&
-             validators.position(DOM.formPosition.value).valid;
+             validators.position(DOM.formPosition.value).valid &&
+             validators.track(DOM.formTrack.value).valid;
   DOM.btnStart.disabled = !ok;
 
   // Update button icon and label to reflect state clearly
@@ -194,6 +198,7 @@ DOM.formMobile.addEventListener('input', () => {
 });
 DOM.formEmail.addEventListener('input',    () => { validateField(DOM.formEmail, DOM.errEmail, validators.email); checkFormValidity(); });
 DOM.formPosition.addEventListener('input', () => { validateField(DOM.formPosition, DOM.errPosition, validators.position); checkFormValidity(); });
+DOM.formTrack.addEventListener('change',   () => { validateField(DOM.formTrack, DOM.errTrack, validators.track); checkFormValidity(); });
 
 // ── Start Assessment ─────────────────────────────────────────────
 DOM.btnStart.addEventListener('click', function() {
@@ -201,7 +206,8 @@ DOM.btnStart.addEventListener('click', function() {
     name:     DOM.formName.value.trim(),
     mobile:   DOM.formMobile.value.trim(),
     email:    DOM.formEmail.value.trim(),
-    position: DOM.formPosition.value.trim()
+    position: DOM.formPosition.value.trim(),
+    track:    DOM.formTrack.value.trim()
   };
   DOM.regSection.style.display   = 'none';
   DOM.assSection.style.display   = 'block';
@@ -466,6 +472,7 @@ async function finaliseSubmission() {
     mobile:         state.candidate.mobile,
     email:          state.candidate.email,
     position:       state.candidate.position,
+    track:          state.candidate.track,
     empScore:       scores.empScore,
     emotScore:      scores.emotScore,
     attachScore:    scores.attachScore,
@@ -487,6 +494,7 @@ async function finaliseSubmission() {
       mobile:         hrRecord.mobile,
       email:          hrRecord.email,
       position:       hrRecord.position,
+      track:          hrRecord.track,
       empScore:       hrRecord.empScore,
       emotScore:      hrRecord.emotScore,
       attachScore:    hrRecord.attachScore,
