@@ -44,6 +44,43 @@
      ============================================================ -->
 <main class="page-wrapper" role="main">
 
+  <!-- ============================================================
+       EXAM RULES MODAL — shown before the candidate can see or
+       interact with the registration form at all.
+       ============================================================ -->
+  <div
+    class="modal-overlay open"
+    id="rules-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="rules-title"
+    aria-describedby="rules-desc"
+  >
+    <div class="modal-box" style="max-width:560px; text-align:left;">
+      <h3 class="modal-title" id="rules-title" style="text-align:center;">Before You Begin — Please Read Carefully</h3>
+      <div class="modal-body" id="rules-desc">
+        <ul style="margin:16px 0; padding-left:20px; line-height:1.8;">
+          <li><strong>This assessment must be taken in fullscreen mode.</strong> Exiting fullscreen at any point will immediately end your assessment.</li>
+          <li><strong>Do not switch tabs, apps, or windows once you begin.</strong> Switching away — even briefly — will immediately end your assessment.</li>
+          <li><strong>Use a single display only.</strong> Connecting or using a second monitor is not permitted and will end your assessment.</li>
+          <li><strong>Webcam access is required for the full duration of the test.</strong> By starting, you consent to being recorded for integrity verification purposes only.</li>
+          <li><strong>Copying, pasting, and right-clicking are disabled</strong> during the assessment.</li>
+          <li><strong>You cannot navigate back or leave this page</strong> once the assessment has started.</li>
+          <li><strong>You get one attempt only.</strong> Once submitted, you cannot retake this assessment.</li>
+          <li><strong>The timer cannot be paused.</strong> The assessment will auto-submit when time runs out, regardless of how many questions remain.</li>
+          <li><strong>Ensure a stable internet connection</strong> before starting — your webcam recording uploads continuously throughout the test.</li>
+          <li><strong>You must note down your Reference ID</strong>, which will be generated only at the end of this assessment — you will need it to proceed to your next test.</li>
+        </ul>
+        <p style="margin:0;">By clicking below, you confirm you understand and agree to these conditions.</p>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-modal-confirm" id="btn-rules-understood" type="button">
+          I Understand & Proceed
+        </button>
+      </div>
+    </div>
+  </div>
+
 
   <!-- ──────────────────────────────────────────────────────────
        SECTION 1: CANDIDATE REGISTRATION
@@ -65,7 +102,7 @@
             All fields are required.
           </p>
           <div class="assessment-meta">
-            <span class="meta-pill"><span class="icon">⏱</span> 45 Minutes</span>
+            <span class="meta-pill"><span class="icon">⏱</span> 50 Minutes</span>
             <span class="meta-pill"><span class="icon">📝</span> 50 Questions</span>
             <span class="meta-pill"><span class="icon">🔒</span> Confidential</span>
           </div>
@@ -85,7 +122,6 @@
               type="text"
               id="field-name"
               class="form-input"
-              placeholder="e.g. Riya Sharma"
               autocomplete="name"
               aria-required="true"
               aria-describedby="err-name"
@@ -103,7 +139,6 @@
               type="tel"
               id="field-mobile"
               class="form-input"
-              placeholder="10-digit mobile number"
               autocomplete="tel"
               aria-required="true"
               aria-describedby="err-mobile"
@@ -122,7 +157,6 @@
               type="email"
               id="field-email"
               class="form-input"
-              placeholder="e.g. riya@example.com"
               autocomplete="email"
               aria-required="true"
               aria-describedby="err-email"
@@ -140,7 +174,6 @@
               type="text"
               id="field-position"
               class="form-input"
-              placeholder="e.g. BIM Coordinator"
               autocomplete="off"
               aria-required="true"
               aria-describedby="err-position"
@@ -286,6 +319,10 @@
           We typically review applications within 5–7 working days.
         </p>
 
+        <p class="confirm-note" style="margin-top:8px;">
+          Webcam access has been stopped — we are no longer recording or accessing your camera.
+        </p>
+
       </div><!-- /.card-body -->
     </div><!-- /.card -->
 
@@ -322,6 +359,37 @@
       </button>
       <button class="btn-modal-confirm" id="btn-modal-confirm" type="button">
         Submit Now
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     WEBCAM CONSENT MODAL
+     ============================================================ -->
+<div
+  class="modal-overlay"
+  id="webcam-consent-modal"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="webcam-consent-title"
+  aria-describedby="webcam-consent-desc"
+>
+  <div class="modal-box">
+    <div class="modal-icon" aria-hidden="true">📷</div>
+    <h3 class="modal-title" id="webcam-consent-title">Webcam Recording Required</h3>
+    <p class="modal-body" id="webcam-consent-desc">
+      This assessment requires your webcam to be recorded for integrity verification.
+      By clicking "Allow &amp; Continue", you consent to being recorded via your webcam
+      for the full duration of this assessment. Recordings are stored securely and
+      reviewed only by authorised HR staff, solely to verify assessment integrity.
+    </p>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" id="btn-webcam-decline" type="button">
+        Decline
+      </button>
+      <button class="btn-modal-confirm" id="btn-webcam-allow" type="button">
+        Allow &amp; Continue
       </button>
     </div>
   </div>

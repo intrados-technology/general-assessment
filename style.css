@@ -398,6 +398,9 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; letter-spacing: -0.02em; }
   color: var(--text-primary);
   line-height: 1.6;
   margin-bottom: 28px;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
 }
 
 /* Answer options */
@@ -405,6 +408,9 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; letter-spacing: -0.02em; }
   list-style: none;
   display: grid;
   gap: 12px;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
 }
 
 .option-item {

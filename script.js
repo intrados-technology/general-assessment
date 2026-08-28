@@ -66,9 +66,10 @@ const state = {
   candidate: {},       // Registration data
   answers:   {},       // { questionIndex: selectedOptionIndex }
   currentQ:  0,        // 0-based current question index
-  timerSecs: 45 * 60, // 45 minutes in seconds
+  timerSecs: 50 * 60, // 50 minutes in seconds (1 min × 50 questions)
   timerRef:  null,     // setInterval reference
-  submitted: false     // Guard against double-submission
+  submitted: false,    // Guard against double-submission
+  integrityFlags: []   // Logged proctoring events (tab switches, fullscreen exits, etc.)
 };
 
 // ── Restore saved answers on page load ──────────────────────────
@@ -88,6 +89,9 @@ const DOM = {
   confSection:    document.getElementById('confirmation-section'),
   timerDisplay:   document.getElementById('timer-display'),
   timerText:      document.getElementById('timer-text'),
+
+  rulesModal:       document.getElementById('rules-modal'),
+  btnRulesUnderstood: document.getElementById('btn-rules-understood'),
 
   formName:       document.getElementById('field-name'),
   formMobile:     document.getElementById('field-mobile'),
@@ -118,8 +122,20 @@ const DOM = {
   btnModalCancel: document.getElementById('btn-modal-cancel'),
   btnModalConfirm:document.getElementById('btn-modal-confirm'),
 
+  webcamModal:      document.getElementById('webcam-consent-modal'),
+  btnWebcamAllow:   document.getElementById('btn-webcam-allow'),
+  btnWebcamDecline: document.getElementById('btn-webcam-decline'),
+
   refId:          document.getElementById('ref-id')
 };
+
+// ── Exam Rules Modal ──────────────────────────────────────────────
+// Shown automatically on page load, before the candidate can see or
+// interact with the registration form. No skip/close-by-backdrop —
+// the only way past it is the explicit "I Understand & Proceed" click.
+DOM.btnRulesUnderstood.addEventListener('click', function() {
+  DOM.rulesModal.classList.remove('open');
+});
 
 // ── Security ─────────────────────────────────────────────────────
 document.addEventListener('contextmenu', e => e.preventDefault());
@@ -205,8 +221,201 @@ DOM.formPosition.addEventListener('input', () => { validateField(DOM.formPositio
 DOM.formTrack.addEventListener('change',   () => { validateField(DOM.formTrack, DOM.errTrack, validators.track); checkFormValidity(); });
 DOM.formDomain.addEventListener('change',  () => { validateField(DOM.formDomain, DOM.errDomain, validators.domain); checkFormValidity(); });
 
+// ── Test Integrity Measures ─────────────────────────────────────
+// Active only while the assessment section is actually on screen.
+// None of this can stop someone photographing the screen with a
+// second physical device — that's outside what any web page can
+// see or control. What this DOES do: block the easy same-device
+// methods (copy-paste, opening a new tab to an AI tool, using the
+// back button to escape), and log signals (fullscreen exits, tab
+// switches) so flagged attempts can be manually reviewed rather
+// than trusted blindly.
+let integrityArmed = false;
+
+function logIntegrityFlag(msg) {
+  const ts = new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' });
+  state.integrityFlags.push('[' + ts + ', Q' + (state.currentQ + 1) + '] ' + msg);
+}
+
+function handleFullscreenChange() {
+  if (!integrityArmed) return;
+  const inFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  if (!inFullscreen) {
+    logIntegrityFlag('Exited fullscreen — assessment auto-submitted');
+    autoSubmitDueToViolation();
+  }
+}
+
+function handleVisibilityChange() {
+  if (!integrityArmed) return;
+  if (document.hidden) {
+    logIntegrityFlag('Tab/window switched away — assessment auto-submitted');
+    autoSubmitDueToViolation();
+  }
+}
+
+function handlePopState() {
+  if (!integrityArmed) return;
+  history.pushState(null, '', location.href); // immediately cancel the back navigation
+  logIntegrityFlag('Attempted to navigate back');
+}
+
+function blockCopyAndContextMenu(e) {
+  if (integrityArmed) e.preventDefault();
+}
+
+function requestFullscreenSafe() {
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (req) { try { req.call(el); } catch(e) {} }
+}
+
+// ── Second-Monitor Detection ────────────────────────────────────
+// screen.isExtended (Window Management API) currently only works in
+// Chromium browsers (Chrome, Edge) — Safari and Firefox always report
+// false, so this provides NO protection on those browsers. Best-effort
+// only; feature-detected so it never errors where unsupported.
+function hasSecondMonitor() {
+  return ('isExtended' in screen) && screen.isExtended === true;
+}
+
+function handleScreenChange() {
+  if (!integrityArmed) return;
+  if (hasSecondMonitor()) {
+    logIntegrityFlag('Second monitor connected during assessment — auto-submitted');
+    autoSubmitDueToViolation();
+  }
+}
+
+function armIntegrityMeasures() {
+  integrityArmed = true;
+  requestFullscreenSafe();
+  history.pushState(null, '', location.href);
+  window.addEventListener('popstate', handlePopState);
+  document.addEventListener('fullscreenchange', handleFullscreenChange);
+  document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+  document.addEventListener('contextmenu', blockCopyAndContextMenu);
+  document.addEventListener('copy', blockCopyAndContextMenu);
+  document.addEventListener('cut', blockCopyAndContextMenu);
+  if ('isExtended' in screen) {
+    try { screen.addEventListener('change', handleScreenChange); } catch(e) {}
+  }
+}
+
+function disarmIntegrityMeasures() {
+  integrityArmed = false;
+  window.removeEventListener('popstate', handlePopState);
+  document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
+  document.removeEventListener('contextmenu', blockCopyAndContextMenu);
+  document.removeEventListener('copy', blockCopyAndContextMenu);
+  document.removeEventListener('cut', blockCopyAndContextMenu);
+  if ('isExtended' in screen) {
+    try { screen.removeEventListener('change', handleScreenChange); } catch(e) {}
+  }
+  if (document.fullscreenElement || document.webkitFullscreenElement) {
+    try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch(e) {}
+  }
+}
+
+function autoSubmitDueToViolation() {
+  if (state.submitted) return;
+  finaliseSubmission();
+}
+
+// ── Webcam Recording ─────────────────────────────────────────────
+// Consent is asked explicitly before any camera access — nothing
+// records silently. Once granted, recording runs for the full
+// assessment and uploads in ~30-second chunks to Google Drive via
+// the Apps Script backend (action: 'webcamChunk'), saved into a
+// folder named "<ReferenceID>_<TEST_TYPE>". Chunked upload (rather
+// than one file at the end) means a crash or connection drop still
+// leaves whatever was recorded safely saved, and keeps each
+// individual upload small. This covers EVERY submission path —
+// normal finish, tab-switch, fullscreen-exit, second-monitor — since
+// stopWebcamRecording() is called from finaliseSubmission() itself,
+// which all of those funnel into.
+const TEST_TYPE = 'G'; // 'G' for General Assessment, 'P' for all Professional Assessment portals
+let mediaStream   = null;
+let mediaRecorder = null;
+let webcamChunkIndex = 0;
+
+function showWebcamConsent() {
+  return new Promise(function(resolve) {
+    DOM.webcamModal.classList.add('open');
+    DOM.btnWebcamAllow.onclick = function() {
+      DOM.webcamModal.classList.remove('open');
+      resolve(true);
+    };
+    DOM.btnWebcamDecline.onclick = function() {
+      DOM.webcamModal.classList.remove('open');
+      resolve(false);
+    };
+  });
+}
+
+async function startWebcamRecording() {
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 320, height: 240 },
+      audio: false
+    });
+  } catch (err) {
+    return false;
+  }
+  try {
+    mediaRecorder = new MediaRecorder(mediaStream, {
+      mimeType: 'video/webm;codecs=vp8',
+      videoBitsPerSecond: 150000
+    });
+  } catch (err) {
+    try { mediaRecorder = new MediaRecorder(mediaStream); }
+    catch (err2) { return false; }
+  }
+  webcamChunkIndex = 0;
+  mediaRecorder.ondataavailable = function(e) {
+    if (e.data && e.data.size > 0) {
+      uploadWebcamChunk(e.data, webcamChunkIndex);
+      webcamChunkIndex++;
+    }
+  };
+  try { mediaRecorder.start(30000); } catch(e) { return false; } // emit a chunk every 30s
+  return true;
+}
+
+function stopWebcamRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    try { mediaRecorder.stop(); } catch(e) {}
+  }
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(function(t) { t.stop(); });
+  }
+}
+
+function uploadWebcamChunk(blob, index) {
+  var reader = new FileReader();
+  reader.onloadend = function() {
+    var base64 = reader.result.split(',')[1];
+    fetch(SCRIPT_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action:      'webcamChunk',
+        referenceId: (state.candidate && state.candidate.refId) || 'unknown',
+        testType:    TEST_TYPE,
+        chunkIndex:  index,
+        mimeType:    blob.type,
+        data:        base64
+      })
+    }).catch(function(err) { console.warn('[IDS] Webcam chunk upload error:', err); });
+  };
+  reader.readAsDataURL(blob);
+}
+
 // ── Start Assessment ─────────────────────────────────────────────
-DOM.btnStart.addEventListener('click', function() {
+DOM.btnStart.addEventListener('click', async function() {
   state.candidate = {
     name:     DOM.formName.value.trim(),
     mobile:   DOM.formMobile.value.trim(),
@@ -215,12 +424,35 @@ DOM.btnStart.addEventListener('click', function() {
     track:    DOM.formTrack.value.trim(),
     domain:   DOM.formDomain.value.trim()
   };
+  // The real Reference ID isn't generated until finaliseSubmission() runs
+  // at the very end — but webcam chunks upload throughout the whole exam.
+  // Use a temporary session-based ID for chunk folder naming in the
+  // meantime, based on mobile number + start time (reasonably unique).
+  state.candidate.refId = state.candidate.mobile + '_' + Date.now();
+
+  if (hasSecondMonitor()) {
+    alert('A second monitor/display was detected. Please disconnect any secondary displays and refresh the page before starting this assessment.');
+    return;
+  }
+
+  const consented = await showWebcamConsent();
+  if (!consented) {
+    alert('Webcam recording is required to begin this assessment.');
+    return;
+  }
+  const recordingStarted = await startWebcamRecording();
+  if (!recordingStarted) {
+    alert('Could not access your webcam. Please allow camera access in your browser and try again.');
+    return;
+  }
+
   DOM.regSection.style.display   = 'none';
   DOM.assSection.style.display   = 'block';
   DOM.timerDisplay.style.display = 'flex';
   // Mark this tab as the authoritative assessment session
   localStorage.setItem('assessmentRunning', 'true');
   localStorage.setItem('assessmentTab', TAB_ID);
+  armIntegrityMeasures();
   // Resume from the last answered question if answers were restored
   const lastAnswered = Object.keys(state.answers).length;
   renderQuestion(lastAnswered > 0 ? lastAnswered : 0);
@@ -416,6 +648,8 @@ async function finaliseSubmission() {
   if (state.submitted) return;
   state.submitted = true;
   if (state.timerRef) clearInterval(state.timerRef);
+  disarmIntegrityMeasures();
+  stopWebcamRecording();
 
   DOM.assSection.style.display   = 'none';
   DOM.timerDisplay.style.display = 'none';
@@ -486,6 +720,7 @@ async function finaliseSubmission() {
     totalScore:     scores.totalScore,
     recommendation: scores.recommendation,
     submissionTime: subTime,
+    integrityNotes: state.integrityFlags.join(' | '),
     answers:        state.answers
   };
 
@@ -508,7 +743,8 @@ async function finaliseSubmission() {
       attachScore:    hrRecord.attachScore,
       totalScore:     hrRecord.totalScore,
       recommendation: hrRecord.recommendation,
-      submissionTime: hrRecord.submissionTime
+      submissionTime: hrRecord.submissionTime,
+      integrityNotes: hrRecord.integrityNotes
     })
   }).catch(function(err) { console.warn('[IDS] POST error:', err.message); });
 
