@@ -69,7 +69,7 @@
           <li><strong>You get one attempt only.</strong> Once submitted, you cannot retake this assessment.</li>
           <li><strong>The timer cannot be paused.</strong> The assessment will auto-submit when time runs out, regardless of how many questions remain.</li>
           <li><strong>Ensure a stable internet connection</strong> before starting — your webcam recording uploads continuously throughout the test.</li>
-          <li><strong>You must note down your Reference ID</strong>, which will be generated only at the end of this assessment — you will need it to proceed to your next test.</li>
+          <li><strong>Keep your Reference ID handy</strong> — you'll need the same one to proceed to your next test after this.</li>
         </ul>
         <p style="margin:0;">By clicking below, you confirm you understand and agree to these conditions.</p>
       </div>
@@ -96,10 +96,9 @@
             <span>📋</span>
             Test 1: General Assessment
           </div>
-          <h1 class="reg-title">Tell us about yourself</h1>
+          <h1 class="reg-title">Verify Your Reference ID</h1>
           <p class="reg-sub">
-            Please fill in your details accurately before beginning the assessment.
-            All fields are required.
+            Enter the Reference ID from your approved application to begin.
           </p>
           <div class="assessment-meta">
             <span class="meta-pill"><span class="icon">⏱</span> 50 Minutes</span>
@@ -109,113 +108,49 @@
         </div>
       </div>
 
-      <!-- Registration Form -->
+      <!-- Verification Form -->
       <div class="card-body">
-        <div class="form-grid" role="form" aria-label="Candidate registration form">
+        <div class="form-grid" role="form" aria-label="Candidate verification form">
 
-          <!-- Full Name -->
+          <!-- Reference ID -->
           <div class="form-group">
-            <label class="form-label" for="field-name">
-              Full Name <span class="req" aria-hidden="true">*</span>
+            <label class="form-label" for="field-refid">
+              Reference ID <span class="req" aria-hidden="true">*</span>
             </label>
-            <input
-              type="text"
-              id="field-name"
-              class="form-input"
-              autocomplete="name"
-              aria-required="true"
-              aria-describedby="err-name"
-              maxlength="120"
-            />
-            <span class="field-error" id="err-name" role="alert" aria-live="polite"></span>
+            <div class="refid-input-row">
+              <input
+                type="text"
+                id="field-refid"
+                class="form-input"
+                autocomplete="off"
+                aria-required="true"
+                aria-describedby="err-refid"
+                maxlength="50"
+              />
+              <button
+                id="btn-verify"
+                class="btn-verify"
+                type="button"
+                aria-label="Verify Reference ID"
+              >
+                Verify
+              </button>
+            </div>
+            <span class="field-error" id="err-refid" role="alert" aria-live="polite"></span>
+            <p class="refid-hint">Use the Reference ID from your approved application. Your details will be pulled in automatically.</p>
           </div>
 
-          <!-- Mobile Number -->
-          <div class="form-group">
-            <label class="form-label" for="field-mobile">
-              Mobile Number <span class="req" aria-hidden="true">*</span>
-            </label>
-            <input
-              type="tel"
-              id="field-mobile"
-              class="form-input"
-              autocomplete="tel"
-              aria-required="true"
-              aria-describedby="err-mobile"
-              maxlength="10"
-              inputmode="numeric"
-            />
-            <span class="field-error" id="err-mobile" role="alert" aria-live="polite"></span>
-          </div>
-
-          <!-- Email Address -->
-          <div class="form-group">
-            <label class="form-label" for="field-email">
-              Email Address <span class="req" aria-hidden="true">*</span>
-            </label>
-            <input
-              type="email"
-              id="field-email"
-              class="form-input"
-              autocomplete="email"
-              aria-required="true"
-              aria-describedby="err-email"
-              maxlength="200"
-            />
-            <span class="field-error" id="err-email" role="alert" aria-live="polite"></span>
-          </div>
-
-          <!-- Position Applied For -->
-          <div class="form-group">
-            <label class="form-label" for="field-position">
-              Position Applied For <span class="req" aria-hidden="true">*</span>
-            </label>
-            <input
-              type="text"
-              id="field-position"
-              class="form-input"
-              autocomplete="off"
-              aria-required="true"
-              aria-describedby="err-position"
-              maxlength="200"
-            />
-            <span class="field-error" id="err-position" role="alert" aria-live="polite"></span>
-          </div>
-
-          <!-- Applying As (Track) -->
-          <div class="form-group">
-            <label class="form-label" for="field-track">
-              Applying As <span class="req" aria-hidden="true">*</span>
-            </label>
-            <select
-              id="field-track"
-              class="form-input"
-              aria-required="true"
-              aria-describedby="err-track"
-            >
-              <option value="" disabled selected>Select one</option>
-              <option value="Fresher">Fresher</option>
-              <option value="Experienced">Experienced</option>
-            </select>
-            <span class="field-error" id="err-track" role="alert" aria-live="polite"></span>
-          </div>
-
-          <!-- Domain -->
-          <div class="form-group">
-            <label class="form-label" for="field-domain">
-              Domain <span class="req" aria-hidden="true">*</span>
-            </label>
-            <select
-              id="field-domain"
-              class="form-input"
-              aria-required="true"
-              aria-describedby="err-domain"
-            >
-              <option value="" disabled selected>Select one</option>
-              <option value="Technical">Technical</option>
-              <option value="Non-Technical">Non-Technical</option>
-            </select>
-            <span class="field-error" id="err-domain" role="alert" aria-live="polite"></span>
+          <!-- Verified Candidate Summary -->
+          <div id="candidate-summary" class="candidate-summary" style="display:none;" aria-live="polite">
+            <div class="summary-header">
+              <span class="summary-check" aria-hidden="true">✓</span>
+              <span>Candidate Verified</span>
+            </div>
+            <div class="summary-row"><span class="summary-label">Name</span><span class="summary-value" id="summary-name"></span></div>
+            <div class="summary-row"><span class="summary-label">Mobile</span><span class="summary-value" id="summary-mobile"></span></div>
+            <div class="summary-row"><span class="summary-label">Email</span><span class="summary-value" id="summary-email"></span></div>
+            <div class="summary-row"><span class="summary-label">Position</span><span class="summary-value" id="summary-position"></span></div>
+            <p class="summary-note">Not you? Double-check the Reference ID above and verify again.</p>
           </div>
 
           <!-- Start Button -->
@@ -387,6 +322,31 @@
       </button>
       <button class="btn-modal-confirm" id="btn-webcam-allow" type="button">
         Allow &amp; Continue
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     NOT ELIGIBLE / VERIFICATION FAILURE MODAL
+     ============================================================ -->
+<div
+  class="modal-overlay"
+  id="not-eligible-modal"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="not-eligible-title"
+  aria-describedby="not-eligible-desc"
+>
+  <div class="modal-box">
+    <div class="modal-icon" aria-hidden="true">⛔</div>
+    <h3 class="modal-title" id="not-eligible-title">Not Eligible</h3>
+    <p class="modal-body" id="not-eligible-desc">
+      You are not eligible for this test.
+    </p>
+    <div class="modal-actions">
+      <button class="btn-modal-confirm" id="btn-not-eligible-ok" type="button">
+        OK
       </button>
     </div>
   </div>

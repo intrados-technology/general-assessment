@@ -93,19 +93,19 @@ const DOM = {
   rulesModal:       document.getElementById('rules-modal'),
   btnRulesUnderstood: document.getElementById('btn-rules-understood'),
 
-  formName:       document.getElementById('field-name'),
-  formMobile:     document.getElementById('field-mobile'),
-  formEmail:      document.getElementById('field-email'),
-  formPosition:   document.getElementById('field-position'),
-  formTrack:      document.getElementById('field-track'),
-  formDomain:     document.getElementById('field-domain'),
-  errName:        document.getElementById('err-name'),
-  errMobile:      document.getElementById('err-mobile'),
-  errEmail:       document.getElementById('err-email'),
-  errPosition:    document.getElementById('err-position'),
-  errTrack:       document.getElementById('err-track'),
-  errDomain:      document.getElementById('err-domain'),
+  formRefId:      document.getElementById('field-refid'),
+  errRefId:       document.getElementById('err-refid'),
+  btnVerify:      document.getElementById('btn-verify'),
+  candSummary:    document.getElementById('candidate-summary'),
+  summaryName:    document.getElementById('summary-name'),
+  summaryMobile:  document.getElementById('summary-mobile'),
+  summaryEmail:   document.getElementById('summary-email'),
+  summaryPosition:document.getElementById('summary-position'),
   btnStart:       document.getElementById('btn-start'),
+
+  neModal:        document.getElementById('not-eligible-modal'),
+  neModalDesc:    document.getElementById('not-eligible-desc'),
+  btnNeModalOk:   document.getElementById('btn-not-eligible-ok'),
 
   progressFill:   document.getElementById('progress-fill'),
   progressLabel:  document.getElementById('progress-label'),
@@ -130,7 +130,7 @@ const DOM = {
 
 // ── Exam Rules Modal ──────────────────────────────────────────────
 // Shown automatically on page load, before the candidate can see or
-// interact with the registration form. No skip/close-by-backdrop —
+// interact with the verification form. No skip/close-by-backdrop —
 // the only way past it is the explicit "I Understand & Proceed" click.
 DOM.btnRulesUnderstood.addEventListener('click', function() {
   DOM.rulesModal.classList.remove('open');
@@ -161,64 +161,200 @@ window.addEventListener('beforeunload', function(e) {
   }
 });
 
-// ── Registration Validation ──────────────────────────────────────
-function validateField(input, errorEl, validationFn) {
-  const result = validationFn(input.value);
-  if (result.valid) {
-    input.classList.remove('error');
-    input.classList.add('success');
-    errorEl.classList.remove('show');
-  } else {
-    input.classList.add('error');
-    input.classList.remove('success');
-    errorEl.textContent = result.msg;
-    errorEl.classList.add('show');
-  }
-  return result.valid;
+// ── Reference ID Verification & Auto-Fill ─────────────────────────
+// Phase 2: candidates now apply first (Application Portal), and only
+// take General Assessment after HR approves that application. So —
+// same pattern as Technical/Professional Assessment — candidates
+// verify their Reference ID here, pulled from the "Applications"
+// sheet, rather than typing their details fresh. Two checks run
+// before anyone can start:
+//   1. General Assessment tab (this same sheet) — has this Reference
+//      ID already submitted a General Assessment attempt? Blocks
+//      re-entry regardless of score.
+//   2. Applications tab — is this Reference ID's Remarks column
+//      exactly "Approved"? If not (including the default "Pending
+//      Review", or "Rejected", or not found at all), block.
+// Only if both checks pass do we pull Full Name / Phone / Email /
+// Position / Domain / Experience Level and populate the summary.
+
+const APPLICATIONS_SHEET_TAB = "Initial Screening";
+const ALREADY_ATTEMPTED_MSG = "You have already completed this assessment. Multiple attempts are not allowed.";
+const NOT_ELIGIBLE_MSG = "You are not eligible for this test.";
+
+function setRefIdError(msg) {
+  DOM.formRefId.classList.toggle('error', !!msg);
+  DOM.formRefId.classList.remove('success');
+  DOM.errRefId.textContent = msg || '';
+  DOM.errRefId.classList.toggle('show', !!msg);
 }
 
-const validators = {
-  name:     v => v.trim().length > 0 ? { valid: true } : { valid: false, msg: 'Full name cannot be blank.' },
-  mobile:   v => /^\d{10}$/.test(v.trim()) ? { valid: true } : { valid: false, msg: 'Please enter a valid 10-digit mobile number.' },
-  email:    v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) ? { valid: true } : { valid: false, msg: 'Please provide a valid email address.' },
-  position: v => v.trim().length > 0 ? { valid: true } : { valid: false, msg: 'Position applied for cannot be blank.' },
-  track:    v => (v === 'Fresher' || v === 'Experienced') ? { valid: true } : { valid: false, msg: 'Please select whether you are applying as a Fresher or Experienced candidate.' },
-  domain:   v => (v === 'Technical' || v === 'Non-Technical') ? { valid: true } : { valid: false, msg: 'Please select Technical or Non-Technical.' }
-};
-
-function checkFormValidity() {
-  const ok = validators.name(DOM.formName.value).valid &&
-             validators.mobile(DOM.formMobile.value).valid &&
-             validators.email(DOM.formEmail.value).valid &&
-             validators.position(DOM.formPosition.value).valid &&
-             validators.track(DOM.formTrack.value).valid &&
-             validators.domain(DOM.formDomain.value).valid;
-  DOM.btnStart.disabled = !ok;
-
-  // Update button icon and label to reflect state clearly
-  var icon = document.getElementById('btn-start-icon');
-  var text = document.getElementById('btn-start-text');
-  if (icon && text) {
-    if (ok) {
-      icon.textContent = '✓';
-      text.textContent = 'Begin Assessment';
-    } else {
-      icon.textContent = '🔒';
-      text.textContent = 'Fill all fields to continue';
-    }
-  }
+function clearVerifiedCandidate() {
+  state.candidate = {};
+  DOM.candSummary.style.display = 'none';
+  DOM.btnStart.disabled = true;
+  DOM.formRefId.classList.remove('success');
 }
 
-DOM.formName.addEventListener('input', () => { validateField(DOM.formName, DOM.errName, validators.name); checkFormValidity(); });
-DOM.formMobile.addEventListener('input', () => {
-  DOM.formMobile.value = DOM.formMobile.value.replace(/\D/g, '').slice(0, 10);
-  validateField(DOM.formMobile, DOM.errMobile, validators.mobile);
-  checkFormValidity();
+function showNotEligibleModal(msg) {
+  DOM.neModalDesc.textContent = msg;
+  DOM.neModal.classList.add('open');
+}
+function hideNotEligibleModal() {
+  DOM.neModal.classList.remove('open');
+}
+DOM.btnNeModalOk.addEventListener('click', hideNotEligibleModal);
+DOM.neModal.addEventListener('click', function(e) {
+  if (e.target === DOM.neModal) hideNotEligibleModal();
 });
-DOM.formEmail.addEventListener('input',    () => { validateField(DOM.formEmail, DOM.errEmail, validators.email); checkFormValidity(); });
-DOM.formPosition.addEventListener('input', () => { validateField(DOM.formPosition, DOM.errPosition, validators.position); checkFormValidity(); });
-DOM.formTrack.addEventListener('change',   () => { validateField(DOM.formTrack, DOM.errTrack, validators.track); checkFormValidity(); });
-DOM.formDomain.addEventListener('change',  () => { validateField(DOM.formDomain, DOM.errDomain, validators.domain); checkFormValidity(); });
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && DOM.neModal.classList.contains('open')) hideNotEligibleModal();
+});
+
+DOM.formRefId.addEventListener('input', function() {
+  clearVerifiedCandidate();
+  hideNotEligibleModal();
+});
+
+// Generic one-shot gviz/tq JSONP fetch. Calls onSuccess(rows) or
+// onFail(message). Handles its own timeout + <script> tag cleanup.
+function gvizFetch(sheetId, sheetTab, query, onSuccess, onFail) {
+  const callbackName = 'idsGvizCallback_' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
+  let settled = false;
+
+  const cleanup = function() {
+    delete window[callbackName];
+    const tag = document.getElementById(callbackName);
+    if (tag) tag.remove();
+    clearTimeout(timeoutRef);
+  };
+
+  const timeoutRef = setTimeout(function() {
+    if (settled) return;
+    settled = true;
+    cleanup();
+    onFail('Could not reach the verification service. Check your connection and try again.');
+  }, 12000);
+
+  window[callbackName] = function(response) {
+    if (settled) return;
+    settled = true;
+    cleanup();
+    try {
+      onSuccess(response.table.rows || []);
+    } catch (err) {
+      onFail('Something went wrong while verifying. Please try again.');
+    }
+  };
+
+  const url =
+    'https://docs.google.com/spreadsheets/d/' + sheetId + '/gviz/tq' +
+    '?sheet=' + encodeURIComponent(sheetTab) +
+    '&tq=' + encodeURIComponent(query) +
+    '&tqx=responseHandler:' + callbackName;
+
+  const script = document.createElement('script');
+  script.id = callbackName;
+  script.src = url;
+  script.onerror = function() {
+    if (settled) return;
+    settled = true;
+    cleanup();
+    onFail('Could not verify right now. Please try again in a moment.');
+  };
+  document.body.appendChild(script);
+}
+
+function verifyReferenceId() {
+  const refId = DOM.formRefId.value.trim();
+  setRefIdError('');
+  clearVerifiedCandidate();
+
+  if (!refId) {
+    setRefIdError('Please enter your Reference ID.');
+    return;
+  }
+
+  DOM.btnVerify.disabled = true;
+  DOM.btnVerify.textContent = 'Verifying…';
+
+  const finish = function(errMsg) {
+    DOM.btnVerify.disabled = false;
+    DOM.btnVerify.textContent = 'Verify';
+    if (errMsg) {
+      setRefIdError(errMsg);
+      showNotEligibleModal(errMsg);
+    }
+  };
+
+  const safeRefId = refId.replace(/'/g, "\\'");
+
+  // ── Step 1: has this Reference ID already submitted General
+  // Assessment? ────────────────────────────────────────────────────
+  gvizFetch(
+    SHEET_ID,
+    SHEET_TAB,
+    "select B where B = '" + safeRefId + "'",
+    function(gaRows) {
+      if (gaRows.length > 0) {
+        finish(ALREADY_ATTEMPTED_MSG);
+        return;
+      }
+      runEligibilityCheck();
+    },
+    function(errMsg) { finish(errMsg); }
+  );
+
+  // ── Step 2: is this Reference ID's application Approved? ────────
+  function runEligibilityCheck() {
+    gvizFetch(
+      SHEET_ID,
+      APPLICATIONS_SHEET_TAB,
+      "select B,C,D,F,I,X,Y,Z where B = '" + safeRefId + "'",
+      function(appRows) {
+        if (appRows.length === 0) {
+          finish(NOT_ELIGIBLE_MSG);
+          return;
+        }
+
+        const cells = appRows[0].c;
+        const name        = cells[1] && cells[1].v ? String(cells[1].v).trim() : '';
+        const phone       = cells[2] && cells[2].v ? String(cells[2].v).trim() : '';
+        const email       = cells[3] && cells[3].v ? String(cells[3].v).trim() : '';
+        const position    = cells[4] && cells[4].v ? String(cells[4].v).trim() : '';
+        const domain      = cells[5] && cells[5].v ? String(cells[5].v).trim() : '';
+        const track       = cells[6] && cells[6].v ? String(cells[6].v).trim() : '';
+        const remarks     = cells[7] && cells[7].v ? String(cells[7].v).trim() : '';
+
+        if (!name) {
+          finish(NOT_ELIGIBLE_MSG);
+          return;
+        }
+
+        if (remarks.toLowerCase() !== 'approved') {
+          finish(NOT_ELIGIBLE_MSG);
+          return;
+        }
+
+        state.candidate = { name, mobile: phone, email, position, domain, track, refId };
+
+        DOM.summaryName.textContent     = name;
+        DOM.summaryMobile.textContent   = phone || '—';
+        DOM.summaryEmail.textContent    = email || '—';
+        DOM.summaryPosition.textContent = position || '—';
+        DOM.candSummary.style.display   = 'block';
+        DOM.formRefId.classList.add('success');
+        DOM.btnStart.disabled = false;
+        finish(null);
+      },
+      function(errMsg) { finish(errMsg); }
+    );
+  }
+}
+
+DOM.btnVerify.addEventListener('click', verifyReferenceId);
+DOM.formRefId.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); verifyReferenceId(); }
+});
 
 // ── Test Integrity Measures ─────────────────────────────────────
 // Active only while the assessment section is actually on screen.
@@ -356,12 +492,15 @@ function showWebcamConsent() {
 }
 
 async function startWebcamRecording() {
+  console.log('[IDS-WEBCAM-DEBUG] startWebcamRecording() called');
   try {
     mediaStream = await navigator.mediaDevices.getUserMedia({
       video: { width: 320, height: 240 },
       audio: false
     });
+    console.log('[IDS-WEBCAM-DEBUG] getUserMedia succeeded, stream tracks:', mediaStream.getTracks().length);
   } catch (err) {
+    console.log('[IDS-WEBCAM-DEBUG] getUserMedia FAILED:', err.name, err.message);
     return false;
   }
   try {
@@ -369,34 +508,53 @@ async function startWebcamRecording() {
       mimeType: 'video/webm;codecs=vp8',
       videoBitsPerSecond: 150000
     });
+    console.log('[IDS-WEBCAM-DEBUG] MediaRecorder created with vp8, state:', mediaRecorder.state);
   } catch (err) {
-    try { mediaRecorder = new MediaRecorder(mediaStream); }
-    catch (err2) { return false; }
+    console.log('[IDS-WEBCAM-DEBUG] vp8 MediaRecorder failed, trying fallback:', err.message);
+    try {
+      mediaRecorder = new MediaRecorder(mediaStream);
+      console.log('[IDS-WEBCAM-DEBUG] fallback MediaRecorder created, state:', mediaRecorder.state);
+    }
+    catch (err2) {
+      console.log('[IDS-WEBCAM-DEBUG] fallback MediaRecorder ALSO FAILED:', err2.message);
+      return false;
+    }
   }
   webcamChunkIndex = 0;
   mediaRecorder.ondataavailable = function(e) {
+    console.log('[IDS-WEBCAM-DEBUG] ondataavailable fired, blob size:', e.data ? e.data.size : 'no data');
     if (e.data && e.data.size > 0) {
       uploadWebcamChunk(e.data, webcamChunkIndex);
       webcamChunkIndex++;
     }
   };
-  try { mediaRecorder.start(30000); } catch(e) { return false; } // emit a chunk every 30s
+  try {
+    mediaRecorder.start(30000);
+    console.log('[IDS-WEBCAM-DEBUG] mediaRecorder.start(30000) called successfully, state:', mediaRecorder.state);
+  } catch(e) {
+    console.log('[IDS-WEBCAM-DEBUG] mediaRecorder.start() FAILED:', e.message);
+    return false;
+  }
   return true;
 }
 
 function stopWebcamRecording() {
+  console.log('[IDS-WEBCAM-DEBUG] stopWebcamRecording() called, recorder state:', mediaRecorder ? mediaRecorder.state : 'no recorder');
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-    try { mediaRecorder.stop(); } catch(e) {}
+    try { mediaRecorder.stop(); console.log('[IDS-WEBCAM-DEBUG] mediaRecorder.stop() called'); } catch(e) { console.log('[IDS-WEBCAM-DEBUG] stop() error:', e.message); }
   }
   if (mediaStream) {
     mediaStream.getTracks().forEach(function(t) { t.stop(); });
+    console.log('[IDS-WEBCAM-DEBUG] media tracks stopped');
   }
 }
 
 function uploadWebcamChunk(blob, index) {
+  console.log('[IDS-WEBCAM-DEBUG] uploadWebcamChunk() called for chunk', index, 'size:', blob.size);
   var reader = new FileReader();
   reader.onloadend = function() {
     var base64 = reader.result.split(',')[1];
+    console.log('[IDS-WEBCAM-DEBUG] base64 encoded, length:', base64.length, '— sending fetch now');
     fetch(SCRIPT_URL, {
       method: 'POST', mode: 'no-cors',
       headers: { 'Content-Type': 'application/json' },
@@ -408,26 +566,28 @@ function uploadWebcamChunk(blob, index) {
         mimeType:    blob.type,
         data:        base64
       })
-    }).catch(function(err) { console.warn('[IDS] Webcam chunk upload error:', err); });
+    }).then(function() {
+      console.log('[IDS-WEBCAM-DEBUG] fetch() completed (no-cors — response is always opaque, this only confirms no network-level throw)');
+    }).catch(function(err) { console.log('[IDS-WEBCAM-DEBUG] fetch() THREW:', err.message); });
+  };
+  reader.onerror = function(err) {
+    console.log('[IDS-WEBCAM-DEBUG] FileReader error:', err);
   };
   reader.readAsDataURL(blob);
 }
 
 // ── Start Assessment ─────────────────────────────────────────────
 DOM.btnStart.addEventListener('click', async function() {
-  state.candidate = {
-    name:     DOM.formName.value.trim(),
-    mobile:   DOM.formMobile.value.trim(),
-    email:    DOM.formEmail.value.trim(),
-    position: DOM.formPosition.value.trim(),
-    track:    DOM.formTrack.value.trim(),
-    domain:   DOM.formDomain.value.trim()
-  };
-  // The real Reference ID isn't generated until finaliseSubmission() runs
-  // at the very end — but webcam chunks upload throughout the whole exam.
-  // Use a temporary session-based ID for chunk folder naming in the
-  // meantime, based on mobile number + start time (reasonably unique).
-  state.candidate.refId = state.candidate.mobile + '_' + Date.now();
+  // Candidate details were already populated by verifyReferenceId();
+  // guard here in case the button was somehow enabled without a match.
+  if (!state.candidate || !state.candidate.name) {
+    setRefIdError('Please verify your Reference ID before starting.');
+    return;
+  }
+  // The real Reference ID is already known from verification — no
+  // longer generated at submission time (that happens at the
+  // Application stage now), so webcam chunks use the real ID from
+  // the very start.
 
   if (hasSecondMonitor()) {
     alert('A second monitor/display was detected. Please disconnect any secondary displays and refresh the page before starting this assessment.');
@@ -627,14 +787,16 @@ function calculateScores() {
 
 // ── Google Sheet ID — used to read last RefID via public JSON feed ─
 const SHEET_ID  = '1Ep0ESBJb-QxzBfN2oxIAH0RFJOPvCsNb4NpvmyWOfDA';
-const SHEET_TAB = 'General%20Assessment';
+const SHEET_TAB = 'General Assessment';
 
 // ── Final Submission ─────────────────────────────────────────────
-// Flow:
-//   1. Read last RefID from Google Sheet public JSON feed (no CORS)
-//   2. Increment → generate new RefID locally
-//   3. POST all data + new RefID to Apps Script (no-cors, always saves)
-//   4. Display RefID to candidate immediately
+// Flow (Phase 2):
+//   1. Reference ID is already known — verified at the start via
+//      verifyReferenceId(), sourced from the Applications sheet.
+//      No longer generated here.
+//   2. POST all data + the existing RefID to Apps Script (no-cors,
+//      always saves)
+//   3. Display RefID to candidate immediately
 //
 // Sheet must be shared as "Anyone with the link can VIEW"
 // ─────────────────────────────────────────────────────────────────
@@ -651,53 +813,8 @@ async function finaliseSubmission() {
   DOM.refId.textContent          = 'Generating...';
 
   var scores  = calculateScores();
-  var year    = new Date().getFullYear();
   var subTime = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
-
-  // ── Step 1: Read last RefID from sheet via gviz/tq JSON feed ──
-  // This endpoint is publicly readable with ZERO CORS restrictions.
-  // Queries column B (Reference ID), orders by col A (Timestamp) DESC,
-  // returns only the most recent row — giving us the last RefID.
-  var referenceId = 'IDS/JOB/' + year + '/001';
-
-  try {
-    // Query: get ALL of column B (RefID column), last 1 row by row order
-    // No WHERE filter — STARTS WITH is not supported by gviz query language
-    var query = encodeURIComponent('SELECT B LIMIT 1000');
-    var feedUrl = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
-      '/gviz/tq?tqx=out:json&sheet=' + SHEET_TAB + '&tq=' + query;
-
-    var resp = await fetch(feedUrl);
-    var text = await resp.text();
-
-    // Strip Google's JS wrapper: /*O_o*/google.visualization.Query.setResponse({...});
-    var start   = text.indexOf('{');
-    var end     = text.lastIndexOf('}');
-    var jsonStr = text.substring(start, end + 1);
-    var json    = JSON.parse(jsonStr);
-    var rows    = json && json.table && json.table.rows;
-
-    if (rows && rows.length > 0) {
-      // Scan from the BOTTOM to find the last valid IDS/JOB/YYYY/NNN entry
-      for (var i = rows.length - 1; i >= 0; i--) {
-        if (!rows[i].c || !rows[i].c[0] || !rows[i].c[0].v) continue;
-        var cellVal = String(rows[i].c[0].v).trim();
-        var match   = cellVal.match(/^IDS\/JOB\/\d{4}\/(\d+)$/);
-        if (match) {
-          var nextSerial = parseInt(match[1], 10) + 1;
-          referenceId    = 'IDS/JOB/' + year + '/' + String(nextSerial).padStart(3, '0');
-          console.info('[IDS] Last RefID:', cellVal, '→ next:', referenceId);
-          break;
-        }
-      }
-    } else {
-      console.info('[IDS] Sheet empty — starting at 001');
-    }
-
-  } catch(err) {
-    console.warn('[IDS] Could not read sheet:', err.message);
-    referenceId = 'IDS/JOB/' + year + '/' + String(Date.now() % 100000).padStart(5, '0');
-  }
+  var referenceId = state.candidate.refId;
 
   // ── Step 2: POST to Apps Script with no-cors (always works) ───
   var hrRecord = {
