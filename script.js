@@ -123,9 +123,7 @@ const DOM = {
 
   webcamModal:      document.getElementById('webcam-consent-modal'),
   btnWebcamAllow:   document.getElementById('btn-webcam-allow'),
-  btnWebcamDecline: document.getElementById('btn-webcam-decline'),
-
-  refId:          document.getElementById('ref-id')
+  btnWebcamDecline: document.getElementById('btn-webcam-decline')
 };
 
 // ── Exam Rules Modal ──────────────────────────────────────────────
@@ -841,7 +839,6 @@ async function finaliseSubmission() {
   DOM.assSection.style.display   = 'none';
   DOM.timerDisplay.style.display = 'none';
   DOM.confSection.style.display  = 'block';
-  DOM.refId.textContent          = 'Generating...';
 
   var scores  = calculateScores();
   var subTime = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
@@ -896,8 +893,6 @@ async function finaliseSubmission() {
   localStorage.removeItem('assessmentTab');
   localStorage.removeItem('ids_answers');
 
-  // ── Step 3: Show RefID immediately ────────────────────────────
-  DOM.refId.textContent = referenceId;
 }
 
 // ── PDF Report (HR only) ──────────────────────────────────────────
