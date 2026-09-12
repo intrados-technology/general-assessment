@@ -161,6 +161,28 @@ window.addEventListener('beforeunload', function(e) {
   }
 });
 
+// ── Candidate Identity Bar ────────────────────────────────────────
+// Populated from ?ref=&name= query params, passed along by
+// Assessment-list when it sends the candidate here. Purely cosmetic —
+// does not affect the verification flow below, which still requires
+// the candidate to click Verify (though the field is pre-filled for
+// convenience if the param is present).
+(function initCandidateBar() {
+  const params = new URLSearchParams(window.location.search);
+  const urlRefId = (params.get('ref')  || '').trim();
+  const urlName  = (params.get('name') || '').trim();
+
+  if (urlRefId && urlName) {
+    document.getElementById('candidate-bar-name').textContent = urlName;
+    document.getElementById('candidate-bar-ref').textContent  = urlRefId;
+    document.getElementById('candidate-bar').style.display = 'block';
+  }
+
+  if (urlRefId && DOM.formRefId) {
+    DOM.formRefId.value = urlRefId;
+  }
+})();
+
 // ── Reference ID Verification & Auto-Fill ─────────────────────────
 // Phase 2: candidates now apply first (Application Portal), and only
 // take General Assessment after HR approves that application. So —

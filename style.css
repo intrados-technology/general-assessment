@@ -68,6 +68,34 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; letter-spacing: -0.02em; }
   z-index: 100;
 }
 
+/* Candidate identity bar — slim strip below the header, shown only
+   when navigated here from Assessment-list with ?ref=&name= params.
+   Kept separate from .header-inner's grid so it never competes with
+   the timer for the top-right corner during an active assessment. */
+.candidate-bar {
+  background: var(--surface-3);
+  border-bottom: 1px solid var(--border);
+}
+.candidate-bar-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 8px 24px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 10px;
+}
+.candidate-bar-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary-dark);
+}
+.candidate-bar-ref {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
 .header-inner {
   max-width: 1100px;
   margin: 0 auto;
