@@ -68,29 +68,21 @@ h1,h2,h3 { font-family: 'Playfair Display', serif; letter-spacing: -0.02em; }
   z-index: 100;
 }
 
-/* Candidate identity bar — slim strip below the header, shown only
-   when navigated here from Assessment-list with ?ref=&name= params.
-   Kept separate from .header-inner's grid so it never competes with
-   the timer for the top-right corner during an active assessment. */
-.candidate-bar {
-  background: var(--surface-3);
-  border-bottom: 1px solid var(--border);
-}
-.candidate-bar-inner {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 8px 24px;
+/* Candidate identity — top-left corner of the header itself, in the
+   grid's first column (otherwise empty). Logo stays perfectly
+   centered in column 2; timer keeps column 3 during the quiz. */
+.candidate-corner {
+  grid-column: 1;
   display: flex;
-  justify-content: flex-end;
-  align-items: baseline;
-  gap: 10px;
+  flex-direction: column;
+  gap: 1px;
 }
-.candidate-bar-name {
+.candidate-corner-name {
   font-size: 13px;
   font-weight: 700;
   color: var(--primary-dark);
 }
-.candidate-bar-ref {
+.candidate-corner-ref {
   font-size: 11px;
   color: var(--text-muted);
   font-family: monospace;

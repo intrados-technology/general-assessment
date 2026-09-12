@@ -24,6 +24,15 @@
 <header class="site-header" role="banner">
   <div class="header-inner">
 
+    <!-- Candidate identity — top-left, populated from URL query
+         params (?ref=&name=). Hidden if absent. Sits in the grid's
+         first column, which is otherwise empty, so it never
+         competes with the timer (top-right) or logo (centered). -->
+    <div class="candidate-corner" id="candidate-corner" style="display:none;">
+      <span class="candidate-corner-name" id="candidate-corner-name"></span>
+      <span class="candidate-corner-ref" id="candidate-corner-ref"></span>
+    </div>
+
     <!-- Logo -->
     <div class="logo-lockup" aria-label="Intrados Design Studio">
       <img src="https://drive.google.com/thumbnail?id=15vrGO2Vyw49k9AzooJ2wT9TMJ8rXjgJm&sz=w400" alt="Intrados Design Studio" class="logo-image" />
@@ -37,15 +46,6 @@
 
   </div>
 </header>
-
-<!-- Candidate identity bar — populated from URL query params (?ref=&name=)
-     passed by Assessment-list when navigating here. Hidden if absent. -->
-<div class="candidate-bar" id="candidate-bar" style="display:none;">
-  <div class="candidate-bar-inner">
-    <span class="candidate-bar-name" id="candidate-bar-name"></span>
-    <span class="candidate-bar-ref" id="candidate-bar-ref"></span>
-  </div>
-</div>
 
 
 <!-- ============================================================

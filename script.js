@@ -161,25 +161,34 @@ window.addEventListener('beforeunload', function(e) {
   }
 });
 
-// ── Candidate Identity Bar ────────────────────────────────────────
+// ── Candidate Identity Corner ──────────────────────────────────────
 // Populated from ?ref=&name= query params, passed along by
-// Assessment-list when it sends the candidate here. Purely cosmetic —
-// does not affect the verification flow below, which still requires
-// the candidate to click Verify (though the field is pre-filled for
-// convenience if the param is present).
-(function initCandidateBar() {
+// Assessment-list when it sends the candidate here. Since we already
+// know their Reference ID at this point (they already verified once
+// on Assessment-list), we auto-run the verification immediately
+// instead of making them click Verify again — same eligibility
+// checks still run underneath, just triggered automatically.
+(function initCandidateCorner() {
   const params = new URLSearchParams(window.location.search);
   const urlRefId = (params.get('ref')  || '').trim();
   const urlName  = (params.get('name') || '').trim();
 
   if (urlRefId && urlName) {
-    document.getElementById('candidate-bar-name').textContent = urlName;
-    document.getElementById('candidate-bar-ref').textContent  = urlRefId;
-    document.getElementById('candidate-bar').style.display = 'block';
+    document.getElementById('candidate-corner-name').textContent = urlName;
+    document.getElementById('candidate-corner-ref').textContent  = urlRefId;
+    document.getElementById('candidate-corner').style.display = 'flex';
   }
 
   if (urlRefId && DOM.formRefId) {
     DOM.formRefId.value = urlRefId;
+    // Auto-verify once the page has fully loaded and verifyReferenceId
+    // is available (it's defined further down this same file).
+    window.addEventListener('DOMContentLoaded', function() {
+      verifyReferenceId();
+    });
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      verifyReferenceId();
+    }
   }
 })();
 
